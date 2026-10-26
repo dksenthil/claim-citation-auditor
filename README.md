@@ -58,7 +58,20 @@ any scripts yourself — just describe the task and Claude invokes the skill, ru
 scripts, makes the support judgements, and hands you the report. Start a session **in the
 folder with your manuscript** (or give Claude the absolute path).
 
-**Typical prompts that trigger it:**
+**Explicitly calling the skill by name.** If you want to force it rather than rely on
+auto-triggering, name the skill in your prompt — copy-paste:
+```
+Use the claim-citation-auditor skill to audit the references in
+~/Documents/paper/manuscript.docx. Map each claim to its citation(s), validate
+the reference metadata, check whether each source actually supports the claim,
+and give me a severity-ranked triage report with suggested fixes.
+```
+Claude Code also exposes installed skills as slash commands, so typing
+`/claim-citation-auditor` (optionally followed by the file path, e.g.
+`/claim-citation-auditor audit ./manuscript.docx`) invokes it directly. Type `/` and
+start typing the name to confirm it appears.
+
+**Typical prompts that trigger it (auto-selected):**
 ```
 > Audit the references in manuscript.docx — do the citations actually support the claims?
 > A reviewer wants us to check every reference against the source. Run that on paper.tex.
