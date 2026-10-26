@@ -51,7 +51,52 @@ a `SKILL.md` with YAML frontmatter (`name`, `description`, `license`, `version`,
 `scripts/`. Point your agent's skill loader at this directory. The scripts are plain
 Python 3.10+ CLIs with no required third-party dependencies, so they run anywhere.
 
-## Quick start
+## Using it in a Claude Code session
+
+Once the skill is installed (symlinked into `~/.claude/skills/` as above), you don't run
+any scripts yourself — just describe the task and Claude invokes the skill, runs the
+scripts, makes the support judgements, and hands you the report. Start a session **in the
+folder with your manuscript** (or give Claude the absolute path).
+
+**Typical prompts that trigger it:**
+```
+> Audit the references in manuscript.docx — do the citations actually support the claims?
+> A reviewer wants us to check every reference against the source. Run that on paper.tex.
+> Are any citations in this draft fabricated or mismatched? Check ./review_v3.docx
+> Verify the bibliography in examples/sample_manuscript.md and give me a triage report.
+```
+
+**What Claude does once triggered:**
+1. Runs `extract_claims.py` and `parse_references.py` on your file, then refines each
+   cited sentence into atomic claims.
+2. Runs `retrieve_evidence.py` to validate metadata (Crossref/NCBI) and pull abstracts.
+   It will ask for (or use a placeholder) contact email for NCBI etiquette.
+3. Reads each abstract/source and assigns a graded verdict
+   (`SUPPORTS` / `PARTIAL` / `UNSUPPORTED` / `CONTRADICTS` / `WRONG_SOURCE` / …) with a
+   quoted supporting passage, following `references/evidence_rubric.md`.
+4. Runs `export_report.py` and gives you a severity-ranked triage table plus a one-line
+   bottom line (e.g. *"1 fabricated citation, 1 claim/citation mismatch, 3 metadata
+   errors; 54/62 clean"*).
+
+**Tips for a good run in-session:**
+- **`.docx` with EndNote/Mendeley/Zotero citations:** tell Claude to convert with pandoc
+  first (`pandoc paper.docx -t markdown -o paper.md`) — reference-manager field codes
+  otherwise hide author names and in-text numbers. The skill warns when it detects this.
+- **Scope it** if you only care about part of the paper ("just audit the Methods
+  citations") — Claude can filter the claim map.
+- **Network:** metadata validation needs outbound access to `api.crossref.org` and
+  `eutils.ncbi.nlm.nih.gov`. If a reference can't be resolved, Claude marks it
+  `unverified` rather than guessing.
+- **Verify before you trust:** every non-clean verdict carries a quoted passage and a
+  suggested fix. Claude will not edit your manuscript or "fix" citations unless you ask —
+  it proposes; you (and your reference manager) apply.
+
+To confirm the skill is installed and visible, type `/` in the session and look for
+`claim-citation-auditor`, or just ask *"do you have a reference-audit skill available?"*
+
+## Manual / CLI quick start
+
+You can also drive the scripts directly without the skill:
 
 ```bash
 # 0. (optional) create a working dir
@@ -81,7 +126,7 @@ resolve: `pandoc paper.docx -t markdown -o paper.md` and run on `paper.md`.
 claim-citation-auditor/
 ├── SKILL.md                      # entry point + workflow (Agent Skills spec)
 ├── scripts/
-│   ├── _io.py                    # manuscript reading (docx/md/tex/pdf), stdlib-only core
+│   ├── manuscript_io.py          # manuscript reading (docx/md/tex/pdf), stdlib-only core
 │   ├── extract_claims.py         # in-text citations -> claim↔citation map
 │   ├── parse_references.py       # bibliography -> structured references + DOI/PMID
 │   ├── retrieve_evidence.py      # Crossref + NCBI metadata validation + abstracts
