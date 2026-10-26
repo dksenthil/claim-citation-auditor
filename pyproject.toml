@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claim-citation-auditor"
+version = "0.1.0"
+description = "Audit scientific manuscripts: map claims to citations, validate reference metadata, and judge whether each source supports the claim."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "HeDS Platform, McGill University" }]
+keywords = ["citations", "references", "peer-review", "scientific-integrity", "agent-skill", "bibliography"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+]
+# Core scripts (DOCX/MD/LaTeX parsing + Crossref/NCBI retrieval) use only the
+# Python standard library. Optional extras add PDF reading and the test runner.
+dependencies = []
+
+[project.optional-dependencies]
+pdf = ["pdfplumber>=0.11"]
+test = ["pytest>=7"]
+dev = ["pytest>=7", "pdfplumber>=0.11", "ruff>=0.5"]
+
+[project.urls]
+Homepage = "https://github.com/your-org/claim-citation-auditor"
+Issues = "https://github.com/your-org/claim-citation-auditor/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"

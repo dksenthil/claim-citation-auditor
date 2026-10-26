@@ -1,0 +1,54 @@
+{
+  "description": "Gold verdicts for benchmark_manuscript.md. Used to regression-test the auditor. 'metadata_expected' is what retrieve_evidence.py should report deterministically; 'verdict_expected' is the support judgement the assistant should reach per references/evidence_rubric.md.",
+  "items": [
+    {
+      "ref_key": "1",
+      "claim": "Nucleoside-modified mRNA suppresses innate immune activation and increases translation.",
+      "verdict_expected": "SUPPORTS",
+      "metadata_expected": "ok",
+      "note": "Karikó 2005 is the canonical result; should validate and support."
+    },
+    {
+      "ref_key": "2",
+      "claim": "CAI is a strong, general predictor of protein expression across systems.",
+      "verdict_expected": "CONTRADICTS",
+      "metadata_expected": "ok",
+      "note": "Kudla 2009 explicitly found codon bias did NOT correlate with expression."
+    },
+    {
+      "ref_key": "3",
+      "claim": "mRNA secondary structure has essentially no effect on protein output.",
+      "verdict_expected": "CONTRADICTS",
+      "metadata_expected": "ok",
+      "note": "Mauger 2019 shows structure REGULATES expression via functional half-life."
+    },
+    {
+      "ref_key": "4",
+      "claim": "LinearDesign improved mRNA stability and immunogenicity, including in animal models.",
+      "verdict_expected": "SUPPORTS",
+      "metadata_expected": "ok",
+      "note": "Zhang 2023 Nature = LinearDesign, with in vivo data."
+    },
+    {
+      "ref_key": "5",
+      "claim": "Deep learning has solved RNA 3D structure prediction to protein-level quality.",
+      "verdict_expected": "CONTRADICTS",
+      "metadata_expected": "ok",
+      "note": "Schneider 2023 argues RNA has NOT had its AlphaFold moment; claim overstates/contradicts."
+    },
+    {
+      "ref_key": "6",
+      "claim": "Global agencies issued a single unified binding law for AI in drug manufacturing.",
+      "verdict_expected": "NOT_FOUND",
+      "metadata_expected": "not_found",
+      "note": "Fabricated: no DOI, garbled agency authors, title matches no real record."
+    },
+    {
+      "ref_key": "7",
+      "claim": "Synonymous codon substitutions perturb co-translational folding in vivo (dated 2018).",
+      "verdict_expected": "SUPPORTS",
+      "metadata_expected": "mismatch",
+      "note": "Claim content matches Walsh, but the cited year 2018 is wrong (actual 2020) -> metadata mismatch should be flagged."
+    }
+  ]
+}
