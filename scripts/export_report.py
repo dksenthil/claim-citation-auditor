@@ -27,18 +27,19 @@ import json
 from pathlib import Path
 
 VERDICT_RANK = {
-    "FABRICATED": 0, "NOT_FOUND": 0,
+    "FABRICATED": 0,
     "CONTRADICTS": 1,
     "METADATA_MISMATCH": 2,
+    "UNRESOLVED": 2.5,
     "PARTIAL": 3, "UNSUPPORTED": 3, "OVERREACH": 3, "WRONG_SOURCE": 3,
     "UNVERIFIED": 4,
     "SUPPORTS": 5,
 }
 VERDICT_LABEL = {
-    "FABRICATED": "🔴 Fabricated / not found",
-    "NOT_FOUND": "🔴 Not found",
+    "FABRICATED": "🔴 Fabricated",
     "CONTRADICTS": "🔴 Contradicts claim",
     "METADATA_MISMATCH": "🟠 Metadata error",
+    "UNRESOLVED": "🟠 Unresolved — verify manually",
     "PARTIAL": "🟡 Partial support",
     "UNSUPPORTED": "🟡 Unsupported",
     "OVERREACH": "🟡 Over-reach",
@@ -56,11 +57,14 @@ def merge(assessments: list[dict], evidence: dict) -> list[dict]:
         key = str(a.get("ref_key"))
         ev = ev_by_key.get(key, {})
         verdict = (a.get("verdict") or "UNVERIFIED").upper()
-        # Promote to metadata/fabrication severity when evidence says so and the
-        # assessor didn't already flag something worse.
+        # Fold in the deterministic metadata status — but do NOT equate an
+        # auto-resolution miss with fabrication. If the assessor explicitly called
+        # it FABRICATED, keep that; otherwise an unresolved ref is "UNRESOLVED"
+        # (verify manually), not a red fabrication flag.
         mstatus = ev.get("metadata_status")
-        if mstatus == "not_found" and VERDICT_RANK.get(verdict, 9) > 0:
-            verdict = "NOT_FOUND"
+        if mstatus == "not_found" and verdict != "FABRICATED":
+            if VERDICT_RANK.get(verdict, 9) > VERDICT_RANK["UNRESOLVED"]:
+                verdict = "UNRESOLVED"
         elif mstatus == "mismatch" and VERDICT_RANK.get(verdict, 9) > 2:
             verdict = "METADATA_MISMATCH"
         rows.append({
@@ -82,16 +86,18 @@ def merge(assessments: list[dict], evidence: dict) -> list[dict]:
 
 def summarize(rows: list[dict]) -> str:
     n = len(rows)
-    fab = sum(r["verdict"] in ("FABRICATED", "NOT_FOUND") for r in rows)
+    fab = sum(r["verdict"] == "FABRICATED" for r in rows)
     con = sum(r["verdict"] == "CONTRADICTS" for r in rows)
     meta = sum(r["verdict"] == "METADATA_MISMATCH" for r in rows)
+    unres = sum(r["verdict"] == "UNRESOLVED" for r in rows)
     part = sum(r["verdict"] in ("PARTIAL", "UNSUPPORTED", "OVERREACH", "WRONG_SOURCE") for r in rows)
     clean = sum(r["verdict"] == "SUPPORTS" for r in rows)
     bits = []
-    if fab: bits.append(f"{fab} fabricated/not-found")
+    if fab: bits.append(f"{fab} fabricated")
     if con: bits.append(f"{con} contradicting")
     if meta: bits.append(f"{meta} metadata error(s)")
     if part: bits.append(f"{part} partial/over-reach")
+    if unres: bits.append(f"{unres} unresolved")
     bits.append(f"{clean}/{n} clean")
     return "; ".join(bits)
 
