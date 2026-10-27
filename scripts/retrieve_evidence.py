@@ -250,12 +250,21 @@ def resolve_one(ref: dict, email: str, api_key: str | None, throttle: float) -> 
     # without overriding the already-validated metadata.
     if not abstract:
         pmid = ref.get("pmid")
+        verified = bool(pmid)  # an explicit PMID from the bibliography is trusted
         if not pmid:
             lookup_title = resolved.get("title") or ref.get("title")
             if lookup_title:
-                pmid = pubmed_search_title(lookup_title, email, api_key)
+                cand = pubmed_search_title(lookup_title, email, api_key)
                 time.sleep(throttle)
-        if pmid:
+                if cand:
+                    # Guard: a title search can return a DIFFERENT paper. Only use
+                    # its abstract if the found title actually matches, otherwise we
+                    # would attach a wrong-paper abstract and mislead the judgement.
+                    summ = pubmed_esummary(cand, email, api_key)
+                    time.sleep(throttle)
+                    if summ and _similar(lookup_title, summ.get("title", "")) >= 0.85:
+                        pmid, verified = cand, True
+        if pmid and verified:
             abstract = pubmed_abstract(pmid, email, api_key)
             time.sleep(throttle)
             if abstract and source and "pubmed" not in source:
