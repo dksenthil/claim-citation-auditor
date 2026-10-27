@@ -129,6 +129,13 @@ def main(argv=None):
     path = Path(args.manuscript)
     text = read_manuscript_text(path)
     body = strip_references_section(text)
+    # Pandoc Markdown (the recommended route for reference-manager .docx files)
+    # backslash-escapes brackets, so an in-text citation renders as "\[1\]" and a
+    # naive "\[\d+\]" match finds nothing. Unescape bracket pairs for non-LaTeX
+    # inputs before matching. (.tex keeps "\[" as display-math, handled via \cite.)
+    pre_style = detect_style(body) if args.style == "auto" else args.style
+    if pre_style != "latex":
+        body = re.sub(r"\\([\[\]])", r"\1", body)
     style = detect_style(body) if args.style == "auto" else args.style
     passages, n_cites = extract(body, style)
 
