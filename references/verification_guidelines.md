@@ -54,6 +54,31 @@ preprint citation is still falsifiable.
   signal. Before declaring fabrication, try a manual search (the title may be
   garbled); if still nothing, recommend the authors supply a DOI or remove it.
 
+## Grey literature is not fabrication (check the issuer's own site)
+
+Crossref and PubMed index journal articles, not most **regulatory guidance,
+standards, white papers, agency reports, or consortium documents**. A `not_found`
+on one of these means the *auto-resolver* couldn't confirm it — **not** that it is
+fabricated. Before ever writing "fabricated," do a direct check: search the
+issuing body's own website (fda.gov, ema.europa.eu, who.int, ich.org, iso.org,
+nist.gov, etc.) or the exact title in a general web search. Regulatory documents
+are frequently **joint** (e.g. an EMA–FDA guidance), so a corporate-author string
+that looks "merged" is usually a reference-manager parsing artifact of two real
+co-issuers, not a sign of confabulation.
+
+Real example this rule comes from: a manuscript cited *"Guiding principles of good
+AI practice in drug development," 2026* with a garbled author
+(`U. F. European Medicines Agency and D. Administration.`). The auditor marked it
+`not_found` and an over-eager verdict called it fabricated — but it is a genuine
+joint **EMA–FDA** document (January 2026) hosted on ema.europa.eu. The only real
+defect was the mangled corporate author. Treat such cases as a **metadata /
+formatting fix** (clean the author, add the URL), not a fabrication, and never
+recommend "split into two documents" for what is a single joint publication
+without first confirming that two separate documents actually exist.
+
+Reserve a `FABRICATED` verdict for the case where the title matches **nothing** on
+the issuer's site or the open web after a genuine manual check.
+
 ## Suggesting replacement citations
 
 When you propose a replacement, you are making a claim too — hold yourself to the
