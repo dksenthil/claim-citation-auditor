@@ -69,14 +69,33 @@ def crossref_by_doi(doi: str, email: str) -> dict | None:
     return data.get("message")
 
 
-def crossref_by_title(title: str, email: str) -> dict | None:
-    q = urllib.parse.urlencode({"query.bibliographic": title, "rows": 1})
+# Derivative Crossref records that share a paper's title but are not the paper.
+_DERIVATIVE_RE = re.compile(
+    r"faculty opinions recommendation|^correction(s)? to|^corrigendum|^erratum|"
+    r"author correction|^retraction|^comment on|^reply to", re.I)
+
+
+def crossref_by_title(title: str, email: str, rows: int = 5, min_sim: float = 0.80) -> dict | None:
+    """Return the best genuine title match from Crossref, or None.
+
+    Fetches several candidates (rows>1) because the top hit is often a derivative
+    record (Faculty Opinions recommendation, correction, erratum). Skips those and
+    returns the highest-similarity real article above `min_sim`.
+    """
+    q = urllib.parse.urlencode({"query.bibliographic": title, "rows": rows})
     try:
         data = json.loads(_get(f"{CROSSREF}?{q}", email))
     except Exception:
         return None
-    items = data.get("message", {}).get("items", [])
-    return items[0] if items else None
+    best, best_sim = None, 0.0
+    for it in data.get("message", {}).get("items", []):
+        t = (it.get("title") or [""])[0]
+        if not t or _DERIVATIVE_RE.search(t):
+            continue
+        sim = _similar(title, t)
+        if sim > best_sim:
+            best, best_sim = it, sim
+    return best if best_sim >= min_sim else None
 
 
 def crossref_fields(msg: dict) -> dict:
@@ -121,14 +140,18 @@ def pubmed_esummary(pmid: str, email: str, api_key: str | None) -> dict | None:
 
 def pubmed_search_title(title: str, email: str, api_key: str | None) -> str | None:
     extra = f"&api_key={api_key}" if api_key else ""
-    q = urllib.parse.quote(title)
-    url = f"{EUTILS}/esearch.fcgi?db=pubmed&term={q}&retmode=json&retmax=1{extra}"
-    try:
-        data = json.loads(_get(url, email, api_key))
-    except Exception:
-        return None
-    ids = data.get("esearchresult", {}).get("idlist", [])
-    return ids[0] if ids else None
+    # Try a Title-field search first (precise), then fall back to free text.
+    for term in (f"{title}[Title]", title):
+        q = urllib.parse.quote(term)
+        url = f"{EUTILS}/esearch.fcgi?db=pubmed&term={q}&retmode=json&retmax=1{extra}"
+        try:
+            data = json.loads(_get(url, email, api_key))
+        except Exception:
+            continue
+        ids = data.get("esearchresult", {}).get("idlist", [])
+        if ids:
+            return ids[0]
+    return None
 
 
 def pubmed_abstract(pmid: str, email: str, api_key: str | None) -> str:
@@ -191,10 +214,11 @@ def resolve_one(ref: dict, email: str, api_key: str | None, throttle: float) -> 
         if summ and not summ.get("error"):
             resolved, source = pubmed_fields(summ, ref["pmid"], email, api_key), "pubmed"
     if resolved is None and ref.get("title"):
-        # No usable identifier — try to resolve by title to catch fabrications.
+        # No usable identifier — resolve by title. crossref_by_title already picks
+        # the best non-derivative match above threshold, so trust its result.
         msg = crossref_by_title(ref["title"], email)
         time.sleep(throttle)
-        if msg and _similar(ref["title"], (msg.get("title") or [""])[0]) >= 0.8:
+        if msg:
             resolved, source = crossref_fields(msg), "crossref(title)"
         else:
             pmid = pubmed_search_title(ref["title"], email, api_key)
@@ -209,8 +233,15 @@ def resolve_one(ref: dict, email: str, api_key: str | None, throttle: float) -> 
         # Could not resolve at all. If there was no identifier and no title match,
         # this is a candidate fabrication / badly garbled citation.
         out["metadata_status"] = "not_found"
-        out["notes"] = ("No DOI/PMID and no title match in Crossref/PubMed. "
-                        "Candidate fabricated or badly garbled citation — verify manually.")
+        had_title = bool(ref.get("title"))
+        if had_title:
+            out["notes"] = ("Title did not confidently match any Crossref/PubMed record "
+                            "(no DOI/PMID to anchor on). Could be a non-indexed venue, a "
+                            "garbled/paraphrased title, or a genuine fabrication — VERIFY "
+                            "MANUALLY before concluding fabrication.")
+        else:
+            out["notes"] = ("No DOI/PMID and no usable title extracted, so nothing to "
+                            "resolve. Verify the citation manually.")
         return out
 
     abstract = resolved.get("abstract", "") or ""

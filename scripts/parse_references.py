@@ -98,7 +98,18 @@ def split_entries(bib_text: str) -> list[tuple[str, str]]:
     return entries
 
 
-def parse_entry(key: str, raw: str) -> dict:
+def _unescape(s: str) -> str:
+    """Remove pandoc/LaTeX backslash escapes before punctuation.
+
+    Pandoc Markdown renders a .docx reference as e.g. `\\"Title,\\" *Journal,*`,
+    so a naive title grab keeps a trailing `,\\`. Stripping `\\` before common
+    punctuation yields clean authors/title/journal strings for metadata search.
+    """
+    return re.sub(r"\\([\[\]\"“”.,&%#_~^{}])", r"\1", s)
+
+
+def parse_entry(key: str, raw_in: str) -> dict:
+    raw = _unescape(raw_in)
     rec: dict = {"key": key, "raw": raw}
     doi_m = DOI_RE.search(raw)
     if doi_m:
@@ -113,7 +124,8 @@ def parse_entry(key: str, raw: str) -> dict:
     # Best-effort title: text inside the first pair of straight/curly double quotes.
     title_m = re.search(r'[\"“]([^\"”]{8,})[\"”]', raw)
     if title_m:
-        rec["title"] = title_m.group(1).strip().rstrip(",.")
+        t = title_m.group(1).strip().strip("\\\"“”").strip()
+        rec["title"] = t.rstrip(",.").strip()
     # Best-effort authors: text before the first quote or before the year.
     head = raw[: title_m.start()] if title_m else raw
     head = head.strip().rstrip(",")
